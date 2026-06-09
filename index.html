@@ -869,18 +869,159 @@ function renderHistorial(){
   if(!list.length){document.getElementById('hist-wrap').innerHTML='<div class="empty"><div style="font-size:52px">🗂</div><p style="font-size:16px;margin-top:14px">Sin documentos aún</p></div>';return;}
   const rows=list.map(d=>{
     const tc=d.tipo==='Cotización'?{bg:'#DBEAFE',t:'#1E40AF'}:{bg:'#FFEDD5',t:'#9A3412'};
+    const esCot=d.tipo==='Cotización';
     return`<tr>
       <td><span class="bdg" style="background:${tc.bg};color:${tc.t}">${d.tipo}</span></td>
-      <td style="font-weight:700">${d.numero}</td>
-      <td>${d.cliente}</td>
-      <td>${d.fecha}</td>
+      <td style="font-weight:700;color:var(--blue)">${d.numero}</td>
+      <td style="font-weight:600">${d.cliente}</td>
+      <td style="color:var(--muted)">${d.fecha}</td>
       <td style="font-weight:700">$${Number(d.total).toLocaleString()} <span style="font-size:11px;color:var(--muted)">${d.moneda}</span></td>
-      <td>${d.condPago||d.observaciones||'—'}</td>
-      <td><div class="actions"><button class="btnd" onclick="delDoc('${d.id}')">🗑</button></div></td>
+      <td style="color:var(--muted);font-size:12px">${d.condPago||d.observaciones||'—'}</td>
+      <td>
+        <div class="actions">
+          <button onclick="verDoc('${d.id}')" title="Ver PDF" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:var(--blue);font-family:'Barlow',sans-serif;">👁 Ver</button>
+          <button onclick="editarDoc('${d.id}')" title="${esCot?'Editar cotización':'Editar remisión'}" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:#EFF6FF;cursor:pointer;font-size:13px;font-weight:600;color:var(--blue);font-family:'Barlow',sans-serif;">✏️ Editar</button>
+          <button class="btnd" onclick="delDoc('${d.id}')" title="Eliminar">🗑</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
-  document.getElementById('hist-wrap').innerHTML=`<table class="htable"><thead><tr><th>Tipo</th><th>Número</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Notas</th><th></th></tr></thead><tbody>${rows}</tbody></table><p class="pfooter">${list.length} documento${list.length!==1?'s':''}</p>`;
+  document.getElementById('hist-wrap').innerHTML=`<table class="htable"><thead><tr><th>Tipo</th><th>Número</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Notas</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table><p class="pfooter">${list.length} documento${list.length!==1?'s':''}</p>`;
 }
+
+function verDoc(id){
+  const d=docs.find(x=>x.id===id);if(!d)return;
+  if(d.tipo==='Cotización') verCotizacion(d);
+  else verRemision(d);
+}
+
+function verCotizacion(d){
+  // Cargar datos en cotizador y generar PDF sin guardar de nuevo
+  cargarEnCotizador(d, false);
+}
+
+function verRemision(d){
+  cargarEnRemision(d, false);
+}
+
+function editarDoc(id){
+  const d=docs.find(x=>x.id===id);if(!d)return;
+  if(d.tipo==='Cotización') cargarEnCotizador(d, true);
+  else cargarEnRemision(d, true);
+}
+
+function cargarEnCotizador(d, editar){
+  // Limpiar form primero
+  ['cp','ce','ca','ccn','cco','cce','cct','cca','ctcp','ctcd','ctce','cdisc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ctax').value='16';
+  document.getElementById('crows').innerHTML=''; cpid=0;
+
+  // Llenar datos del documento
+  document.getElementById('cnum').value = d.numero;
+  document.getElementById('ccn').value  = d.cliente;
+  document.getElementById('ccur').value = d.moneda||'MXN';
+  document.getElementById('ctcp').value = d.condPago||'';
+  document.getElementById('ctcd').value = d.tiempoEntrega||'';
+  document.getElementById('ctvu').value = d.validaHasta||'';
+  document.getElementById('ctce').value = d.observaciones||'';
+
+  // Calcular descuento e IVA desde los valores guardados
+  const sub=Number(d.subtotal)||0, disc=Number(d.descuento)||0, iva=Number(d.iva)||0;
+  if(sub>0){
+    const discPct=Math.round(disc/sub*100);
+    document.getElementById('cdisc').value = discPct||'';
+    const base=sub-disc;
+    const ivaPct=base>0?Math.round(iva/base*100):0;
+    document.getElementById('ctax').value = ivaPct||'0';
+  }
+
+  // Cargar productos
+  const prods=Array.isArray(d.productos)?d.productos:[];
+  if(prods.length>0){
+    prods.forEach(p=>addCRow(p.desc||'', p.meds||'', p.qty||1, p.price||0));
+  } else {
+    addCRow();
+  }
+  updateCTotals();
+
+  // Ir a cotizador
+  goTo('cotizador');
+  document.getElementById('cot-form').style.display='block';
+  document.getElementById('cprev').classList.remove('vis');
+
+  if(editar){
+    toast('Cotización cargada — modifica y genera el PDF');
+  } else {
+    // Solo ver: generar PDF directamente
+    setTimeout(()=>generateCotSinGuardar(), 300);
+  }
+}
+
+function cargarEnRemision(d, editar){
+  ['rp','re','ra','rcn','rco','rca','rant','robs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rrows').innerHTML=''; rpid=0;
+
+  document.getElementById('rnum').value = d.numero;
+  document.getElementById('rcn').value  = d.cliente;
+  document.getElementById('rcur').value = d.moneda||'MXN';
+  document.getElementById('rdate').value= d.fecha||new Date().toISOString().split('T')[0];
+  document.getElementById('robs').value = d.observaciones||'';
+
+  // Anticipo = total - saldo (subtotal - total)
+  const sub=Number(d.subtotal)||0, sal=Number(d.total)||0;
+  const ant=sub-sal;
+  if(ant>0) document.getElementById('rant').value=ant;
+
+  const prods=Array.isArray(d.productos)?d.productos:[];
+  if(prods.length>0){
+    prods.forEach(p=>addRRow(p.desc||'', p.meds||'', p.qty||1, p.price||0));
+  } else {
+    addRRow();
+  }
+  updateRTotals();
+
+  goTo('remision');
+  document.getElementById('rem-form').style.display='block';
+  document.getElementById('rprev').classList.remove('vis');
+
+  if(editar){
+    toast('Remisión cargada — modifica y genera el PDF');
+  } else {
+    setTimeout(()=>generateRemSinGuardar(), 300);
+  }
+}
+
+// Generar PDF sin volver a guardar en Sheets (para "Ver")
+async function generateCotSinGuardar(){
+  const cl=document.getElementById('ccn').value.trim();if(!cl)return;
+  const pr=getCProds();if(!pr.length)return;
+  const sub=pr.reduce((s,p)=>s+p.total,0),disc=parseFloat(document.getElementById('cdisc').value)||0,tax=parseFloat(document.getElementById('ctax').value)||0,da=sub*disc/100,ta=(sub-da)*tax/100,tot=sub-da+ta;
+  const today=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+  const vr=document.getElementById('ctvu').value,vu=vr?(([y,m,d])=>new Date(+y,+m-1,+d).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}))(vr.split('-')):'';
+  const ph=document.getElementById('cp').value.trim(),em=document.getElementById('ce').value.trim(),ad=document.getElementById('ca').value.trim();
+  const qn=document.getElementById('cnum').value.trim(),tcp=document.getElementById('ctcp').value.trim(),tcd=document.getElementById('ctcd').value.trim(),tce=document.getElementById('ctce').value.trim();
+  const cco=document.getElementById('cco').value.trim(),cce=document.getElementById('cce').value.trim(),cct=document.getElementById('cct').value.trim(),cca=document.getElementById('cca').value.trim();
+  const rows=pr.map(p=>`<tr><td>${p.desc}</td><td style="text-align:center">${p.meds||'—'}</td><td style="text-align:center">${p.qty}</td><td style="text-align:center">${fmtC(p.price)}</td><td style="text-align:right">${fmtC(p.total)}</td></tr>`).join('');
+  document.getElementById('cpdf').innerHTML=`<div class="pdf-header"><div class="pdf-logo-area">${LOGO}<div class="pdf-company-text"><h2>TERMINADOS ROMERO</h2><div class="tagline">Vidrio y Aluminio</div><div class="contact">${[ph,em,ad].filter(Boolean).join(' · ')}</div></div></div><div class="pdf-quote-badge"><div class="qlabel">Cotización</div><div class="qnum">${qn}</div><div class="qdate">${today}</div></div></div><div class="pdf-stripe"></div><div class="pdf-body"><div class="pdf-meta"><div class="pdf-meta-block"><h4>Cliente</h4><p><strong>${cl}</strong><br>${cco?cco+'<br>':''}${cca?cca+'<br>':''}${cce?cce+'<br>':''}${cct||''}</p></div><div class="pdf-meta-block"><h4>Detalles</h4><p>${vu?`<strong>Válida hasta:</strong> ${vu}<br>`:''}${tcp?`<strong>Pago:</strong> ${tcp}<br>`:''}${tcd?`<strong>Entrega:</strong> ${tcd}`:''}</p></div></div><table class="pdf-table"><thead><tr><th style="text-align:left">Descripción</th><th>Medidas</th><th>Cant.</th><th>P. Unitario</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table><div class="pdf-totals"><div class="pdf-totals-row"><span>Subtotal</span><span>${fmtC(sub)}</span></div>${disc>0?`<div class="pdf-totals-row"><span>Descuento (${disc}%)</span><span>-${fmtC(da)}</span></div>`:''}${tax>0?`<div class="pdf-totals-row"><span>IVA (${tax}%)</span><span>${fmtC(ta)}</span></div>`:''}<div class="pdf-totals-row"><span>Total</span><span>${fmtC(tot)}</span></div></div>${(tcp||tcd||vu||tce)?`<div class="pdf-notes"><strong>Términos y Condiciones</strong>${tcp?`<div><span style="font-weight:600;color:#1a5fa8">Pago:</span> ${tcp}</div>`:''}${tcd?`<div><span style="font-weight:600;color:#1a5fa8">Entrega:</span> ${tcd}</div>`:''}${vu?`<div><span style="font-weight:600;color:#1a5fa8">Válida hasta:</span> ${vu}</div>`:''}${tce?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #cddaeb">${tce}</div>`:''}</div>`:''}</div><div class="pdf-footer"><span>Terminados Romero — Vidrio y Aluminio</span>${vu?`<span class="vbadge">Válida hasta ${vu}</span>`:''}</div>`;
+  document.getElementById('cot-form').style.display='none';
+  document.getElementById('cprev').classList.add('vis');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function generateRemSinGuardar(){
+  const cl=document.getElementById('rcn').value.trim();if(!cl)return;
+  const pr=getRProds();if(!pr.length)return;
+  const tot=pr.reduce((s,p)=>s+p.total,0),ant=parseFloat(document.getElementById('rant').value)||0,sal=tot-ant;
+  const dr=document.getElementById('rdate').value,fecha=dr?(([y,m,d])=>new Date(+y,+m-1,+d).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}))(dr.split('-')):'';
+  const ph=document.getElementById('rp').value.trim(),em=document.getElementById('re').value.trim(),ad=document.getElementById('ra').value.trim();
+  const rn=document.getElementById('rnum').value.trim(),rco=document.getElementById('rco').value.trim(),rca=document.getElementById('rca').value.trim(),obs=document.getElementById('robs').value.trim();
+  const rows=pr.map(p=>`<tr><td>${p.desc}</td><td style="text-align:center">${p.meds||'—'}</td><td style="text-align:center">${p.qty}</td><td style="text-align:center">${fmtR(p.price)}</td><td style="text-align:right">${fmtR(p.total)}</td></tr>`).join('');
+  document.getElementById('rpdf').innerHTML=`<div class="pdf-header"><div class="pdf-logo-area">${LOGO}<div class="pdf-company-text"><h2>TERMINADOS ROMERO</h2><div class="tagline">Vidrio y Aluminio</div><div class="contact">${[ph,em,ad].filter(Boolean).join(' · ')}</div></div></div><div class="pdf-quote-badge"><div class="qlabel">Nota de Remisión</div><div class="qnum">${rn}</div><div class="qdate">${fecha}</div></div></div><div class="pdf-stripe"></div><div class="pdf-body"><div class="pdf-meta"><div class="pdf-meta-block"><h4>Cliente</h4><p><strong>${cl}</strong><br>${rco?rco+'<br>':''}${rca||''}</p></div><div class="pdf-meta-block"><h4>Detalles</h4><p><strong>Fecha:</strong> ${fecha}</p></div></div><table class="pdf-table"><thead><tr><th style="text-align:left">Descripción</th><th>Medidas</th><th>Cant.</th><th>Precio</th><th style="text-align:right">Importe</th></tr></thead><tbody>${rows}</tbody></table><div class="pdf-totals"><div class="pdf-totals-row"><span>Total</span><span>${fmtR(tot)}</span></div>${ant>0?`<div class="pdf-totals-row" style="color:#c0392b"><span>Anticipo</span><span>-${fmtR(ant)}</span></div>`:''}<div class="pdf-totals-row"><span>Saldo a pagar</span><span>${fmtR(sal)}</span></div></div>${obs?`<div class="pdf-notes"><strong>Observaciones</strong>${obs}</div>`:''}</div><div class="pdf-footer"><span>Terminados Romero — Vidrio y Aluminio</span><span>${rn}</span></div>`;
+  document.getElementById('rem-form').style.display='none';
+  document.getElementById('rprev').classList.add('vis');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
 async function delDoc(id){
   if(!confirm('¿Eliminar este documento del historial?'))return;
   try{const d=await api({accion:'deleteDocumento',id});if(d.ok){toast('Documento eliminado');await loadHistorial();}else toast(d.error,'err');}
