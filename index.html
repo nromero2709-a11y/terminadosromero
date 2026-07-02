@@ -288,6 +288,44 @@ body{font-family:'Barlow',sans-serif;background:#f0f4f9;min-height:100vh;}
   .pdf-header{flex-direction:column;gap:12px;}
   .pdf-body{padding:20px;}
 }
+
+/* ══ AGENTE IA ═══════════════════════════════════════════════════════════ */
+.ai-wrap{display:flex;flex-direction:column;gap:0;max-width:680px;}
+.ai-chat-box{background:#fff;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 24px rgba(13,34,64,.10);border:1px solid var(--border);min-height:460px;max-height:60vh;}
+.ai-chat-hdr{background:var(--navy);padding:14px 18px;display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--blue);flex-shrink:0;}
+.ai-hdr-av{width:36px;height:36px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.ai-hdr-name{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#fff;letter-spacing:.06em;}
+.ai-hdr-st{font-size:11px;color:var(--sky);margin-top:1px;}
+.ai-dot{display:inline-block;width:7px;height:7px;background:#2ecc71;border-radius:50%;margin-right:5px;animation:pulse 2s infinite;}
+.ai-msgs{flex:1;overflow-y:auto;padding:18px 14px;display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth;}
+.ai-msgs::-webkit-scrollbar{width:4px;}
+.ai-msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.ai-msg{display:flex;gap:8px;max-width:86%;animation:slideIn .2s ease both;}
+.ai-msg.bot{align-self:flex-start;}
+.ai-msg.usr{align-self:flex-end;flex-direction:row-reverse;}
+.ai-av{width:28px;height:28px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px;}
+.ai-msg.usr .ai-av{background:var(--sky);}
+.ai-bub{padding:9px 13px;border-radius:15px;font-size:13.5px;line-height:1.55;color:var(--navy);background:var(--off);border:1px solid var(--border);}
+.ai-msg.usr .ai-bub{background:var(--blue);color:#fff;border-color:transparent;}
+.ai-bub ul{padding-left:15px;margin-top:3px;}
+.ai-bub li{margin-bottom:2px;}
+.ai-qr{display:flex;flex-wrap:wrap;gap:6px;padding:9px 14px 3px;flex-shrink:0;background:#fff;border-left:1px solid var(--border);border-right:1px solid var(--border);}
+.ai-qrbtn{background:#fff;border:1.5px solid var(--blue);border-radius:100px;padding:6px 13px;font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;transition:all .15s;}
+.ai-qrbtn:hover{background:var(--blue);color:#fff;}
+.ai-typing{display:flex;align-items:center;gap:5px;padding:9px 13px;}
+.ai-typing span{width:6px;height:6px;background:var(--sky);border-radius:50%;animation:bounce 1.1s infinite;}
+.ai-typing span:nth-child(2){animation-delay:.17s;}
+.ai-typing span:nth-child(3){animation-delay:.34s;}
+.ai-input-bar{background:#fff;border-radius:0 0 18px 18px;border:1px solid var(--border);border-top:none;padding:11px 12px;display:flex;gap:8px;align-items:flex-end;}
+#ai-input{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-family:'Barlow',sans-serif;font-size:13.5px;color:var(--navy);background:var(--off);outline:none;resize:none;min-height:40px;max-height:110px;transition:border-color .2s;line-height:1.4;}
+#ai-input:focus{border-color:var(--blue);background:#fff;}
+#ai-send{width:40px;height:40px;background:var(--blue);border:none;border-radius:10px;color:#fff;font-size:17px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#ai-send:hover{background:#144e8e;}
+#ai-send:disabled{background:var(--border);cursor:default;}
+.ai-prev-acts{display:flex;gap:10px;margin-top:18px;margin-bottom:14px;flex-wrap:wrap;}
+#ai-pdf-wrap{display:none;}
+#ai-pdf-wrap.vis{display:block;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
 </style>
 </head>
 <body>
@@ -344,6 +382,9 @@ body{font-family:'Barlow',sans-serif;background:#f0f4f9;min-height:100vh;}
       <div class="nav-div"></div>
       <div class="nav-lbl">Reportes</div>
       <button class="nav-item"        id="nav-historial"  onclick="goTo('historial')"> <span class="nav-icon">🗂</span> Historial</button>
+      <div class="nav-div"></div>
+      <div class="nav-lbl">Inteligencia IA</div>
+      <button class="nav-item"        id="nav-agente"     onclick="goTo('agente')">    <span class="nav-icon">🤖</span> Agente IA</button>
     </nav>
     <div class="sb-footer">
       <div class="user-pill">
@@ -538,6 +579,48 @@ body{font-family:'Barlow',sans-serif;background:#f0f4f9;min-height:100vh;}
       <div id="hist-wrap"></div>
     </div>
 
+    <!-- PAGE: AGENTE IA -->
+    <div class="page" id="page-agente">
+      <div class="ph">
+        <div class="ph-row">
+          <div>
+            <div class="ph-title">🤖 Agente Cotizador IA</div>
+            <div class="ph-sub">Genera cotizaciones conversando — sin llenar formularios</div>
+          </div>
+          <button class="btns" onclick="aiNewQuote()">＋ Nueva cotización</button>
+        </div>
+      </div>
+
+      <div class="ai-wrap">
+        <!-- Chat box -->
+        <div class="ai-chat-box">
+          <div class="ai-chat-hdr">
+            <div class="ai-hdr-av">🤖</div>
+            <div>
+              <div class="ai-hdr-name">AGENTE COTIZADOR</div>
+              <div class="ai-hdr-st"><span class="ai-dot"></span>En línea — listo para cotizar</div>
+            </div>
+          </div>
+          <div class="ai-msgs" id="ai-msgs"></div>
+          <div class="ai-qr" id="ai-qr"></div>
+        </div>
+        <div class="ai-input-bar">
+          <textarea id="ai-input" placeholder="Escribe tu mensaje..." rows="1"></textarea>
+          <button id="ai-send" onclick="aiSend()">➤</button>
+        </div>
+      </div>
+
+      <!-- PDF preview -->
+      <div id="ai-pdf-wrap">
+        <div class="ai-prev-acts">
+          <button class="btns" onclick="aiBackToChat()">← Seguir editando</button>
+          <button class="btnp" onclick="aiDownloadPDF()">⬇ Descargar PDF</button>
+          <button class="btnp" style="background:#1a8a5f" onclick="aiNewQuote()">＋ Nueva cotización</button>
+        </div>
+        <div class="pdfc" id="ai-pdf"></div>
+      </div>
+    </div>
+
   </div><!-- /main -->
  </div><!-- /layout -->
 </div><!-- /app -->
@@ -639,11 +722,12 @@ function goTo(p){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   document.getElementById('nav-'+p).classList.add('active');
-  const T={clientes:'Clientes',calendario:'Calendario',cotizador:'Cotizador',remision:'Remisión',historial:'Historial'};
+  const T={clientes:'Clientes',calendario:'Calendario',cotizador:'Cotizador',remision:'Remisión',historial:'Historial',agente:'Agente IA'};
   document.getElementById('tb-title').textContent=T[p]||p;
   closeSB();
   if(p==='calendario')renderCal();
   if(p==='historial')loadHistorial();
+  if(p==='agente')aiInit();
 }
 
 // ══ GOOGLE LOGIN ══════════════════════════════════════════════════════════
@@ -1034,6 +1118,163 @@ window.addEventListener('load',()=>{
   if(s&&s.token){session=s;enterApp(s);}
   initGoogle();
 });
+
+// ══ AGENTE IA ══════════════════════════════════════════════════════════════
+let aiHistory=[], aiQuoteData=null, aiLoading=false, aiInited=false;
+
+const AI_SYSTEM=`Eres el agente de cotizaciones de Terminados Romero, empresa especializada en vidrio y aluminio. Tu trabajo es recopilar la información necesaria para una cotización profesional, de forma conversacional y breve, como si fuera WhatsApp.
+
+FLUJO:
+1. Saluda brevemente y pide el nombre del cliente.
+2. Pregunta los productos/servicios (descripción, medidas, cantidad, precio unitario). Permite múltiples. Cuando diga que terminó, continúa.
+3. Pregunta condiciones de pago.
+4. Pregunta tiempo de entrega.
+5. Pregunta descuento (%) e IVA (default 16%).
+6. Pregunta teléfono y correo de Terminados Romero si no los tiene.
+7. Muestra resumen completo y pregunta si está correcto.
+8. Al confirmar, responde EXACTAMENTE así (sin texto antes ni después):
+
+QUOTE_READY:{"clientName":"...","clientCompany":"...","clientEmail":"","clientPhone":"","clientAddress":"","products":[{"desc":"...","meds":"...","qty":1,"price":0}],"discount":0,"tax":16,"tcPayment":"...","tcDelivery":"...","tcExtras":"","companyPhone":"...","companyEmail":"...","companyAddress":"...","quoteNumber":"TR-XXX"}
+
+REGLAS:
+- Mensajes cortos, usa emojis ocasionalmente 🪟✅
+- Extrae múltiples productos de un solo mensaje si el usuario los da juntos.
+- Genera quoteNumber como TR- seguido de 3 dígitos (ej. TR-382).
+- Precios siempre como números sin símbolos en el JSON.
+- Solo emite QUOTE_READY cuando el usuario confirme explícitamente.`;
+
+function aiInit(){
+  if(aiInited)return;
+  aiInited=true;
+  // textarea auto-resize
+  const ta=document.getElementById('ai-input');
+  ta.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';});
+  ta.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();aiSend();}});
+  // first message
+  aiAddBot('¡Hola! 👋 Soy el agente de cotizaciones de <strong>Terminados Romero</strong>.<br><br>Cuéntame, ¿para quién es la cotización?');
+}
+
+function aiAddBot(html){
+  const c=document.getElementById('ai-msgs');
+  const d=document.createElement('div');
+  d.className='ai-msg bot';
+  d.innerHTML=`<div class="ai-av">🤖</div><div class="ai-bub">${html.replace(/\n/g,'<br>')}</div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function aiAddUser(txt){
+  const c=document.getElementById('ai-msgs');
+  const d=document.createElement('div');
+  d.className='ai-msg usr';
+  d.innerHTML=`<div class="ai-av">👤</div><div class="ai-bub">${txt.replace(/\n/g,'<br>')}</div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function aiShowTyping(){
+  const c=document.getElementById('ai-msgs');
+  const d=document.createElement('div');
+  d.className='ai-msg bot';d.id='ai-typing';
+  d.innerHTML=`<div class="ai-av">🤖</div><div class="ai-bub"><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+function aiHideTyping(){document.getElementById('ai-typing')?.remove();}
+function aiSetQR(opts){
+  const qr=document.getElementById('ai-qr');qr.innerHTML='';
+  opts.forEach(o=>{const b=document.createElement('button');b.className='ai-qrbtn';b.textContent=o;b.onclick=()=>{document.getElementById('ai-input').value=o;aiSend();};qr.appendChild(b);});
+}
+
+async function aiSend(){
+  const inp=document.getElementById('ai-input');
+  const txt=inp.value.trim();
+  if(!txt||aiLoading)return;
+  inp.value='';inp.style.height='auto';
+  aiAddUser(txt);aiSetQR([]);
+  aiHistory.push({role:'user',content:txt});
+  aiLoading=true;document.getElementById('ai-send').disabled=true;
+  aiShowTyping();
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:AI_SYSTEM,messages:aiHistory})
+    });
+    const data=await res.json();
+    aiHideTyping();
+    if(!res.ok){aiAddBot('❌ Error: '+(data.error?.message||'Intenta de nuevo.'));aiHistory.pop();return;}
+    const reply=data.content[0]?.text||'';
+    aiHistory.push({role:'assistant',content:reply});
+    if(reply.includes('QUOTE_READY:')){
+      const json=reply.slice(reply.indexOf('QUOTE_READY:')+12).trim();
+      try{
+        aiQuoteData=JSON.parse(json);
+        aiAddBot('✅ ¡Cotización lista! Generando tu PDF...');
+        setTimeout(()=>aiRenderPDF(aiQuoteData),600);
+      }catch(e){aiAddBot('Hubo un problema al procesar la cotización. ¿Confirmas los datos de nuevo?');}
+    } else {
+      aiAddBot(reply);
+      // smart quick replies
+      const lo=reply.toLowerCase();
+      if(lo.includes('producto')||lo.includes('servicio')||lo.includes('agregar'))aiSetQR(['Ya terminé los productos','Agregar otro producto']);
+      else if(lo.includes('iva')||lo.includes('impuesto'))aiSetQR(['16% IVA','Sin IVA','8% IVA']);
+      else if(lo.includes('correcto')||lo.includes('confirma')||lo.includes('todo bien'))aiSetQR(['✅ Sí, generar cotización','✏️ Cambiar algo']);
+      else if(lo.includes('descuento'))aiSetQR(['Sin descuento','5%','10%','15%']);
+      else if(lo.includes('pago')||lo.includes('anticipo'))aiSetQR(['50% anticipo, 50% contra entrega','Pago total al recibir','100% anticipo']);
+      else if(lo.includes('entrega')||lo.includes('días'))aiSetQR(['5 a 7 días hábiles','3 a 5 días hábiles','10 días hábiles']);
+    }
+  }catch(e){aiHideTyping();aiAddBot('❌ Error de conexión. Intenta de nuevo.');aiHistory.pop();}
+  finally{aiLoading=false;document.getElementById('ai-send').disabled=false;document.getElementById('ai-input').focus();}
+}
+
+function aiFmt(n){return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2}).format(n);}
+
+function aiRenderPDF(d){
+  const prods=d.products||[];
+  const sub=prods.reduce((s,p)=>s+(p.qty*p.price),0);
+  const disc=parseFloat(d.discount)||0,tax=parseFloat(d.tax)||16;
+  const da=sub*disc/100,ta=(sub-da)*tax/100,tot=sub-da+ta;
+  const today=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+  const rows=prods.map(p=>`<tr><td>${p.desc}</td><td style="text-align:center">${p.meds||'—'}</td><td style="text-align:center">${p.qty}</td><td style="text-align:center">${aiFmt(p.price)}</td><td style="text-align:right">${aiFmt(p.qty*p.price)}</td></tr>`).join('');
+  document.getElementById('ai-pdf').innerHTML=`
+    <div class="pdf-header"><div class="pdf-logo-area">${LOGO}<div class="pdf-company-text"><h2>TERMINADOS ROMERO</h2><div class="tagline">Vidrio y Aluminio</div><div class="contact">${[d.companyPhone,d.companyEmail,d.companyAddress].filter(Boolean).join(' · ')}</div></div></div><div class="pdf-quote-badge"><div class="qlabel">Cotización</div><div class="qnum">${d.quoteNumber||'TR-001'}</div><div class="qdate">${today}</div></div></div>
+    <div class="pdf-stripe"></div>
+    <div class="pdf-body">
+      <div class="pdf-meta"><div class="pdf-meta-block"><h4>Cliente</h4><p><strong>${d.clientName}</strong><br>${d.clientCompany?d.clientCompany+'<br>':''}${d.clientAddress?d.clientAddress+'<br>':''}${d.clientEmail?d.clientEmail+'<br>':''}${d.clientPhone||''}</p></div><div class="pdf-meta-block"><h4>Detalles</h4><p>${d.tcPayment?`<strong>Pago:</strong> ${d.tcPayment}<br>`:''}${d.tcDelivery?`<strong>Entrega:</strong> ${d.tcDelivery}`:''}</p></div></div>
+      <table class="pdf-table"><thead><tr><th style="text-align:left">Descripción</th><th>Medidas</th><th>Cant.</th><th>P. Unitario</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="pdf-totals"><div class="pdf-totals-row"><span>Subtotal</span><span>${aiFmt(sub)}</span></div>${disc>0?`<div class="pdf-totals-row"><span>Descuento (${disc}%)</span><span>-${aiFmt(da)}</span></div>`:''}${tax>0?`<div class="pdf-totals-row"><span>IVA (${tax}%)</span><span>${aiFmt(ta)}</span></div>`:''}<div class="pdf-totals-row"><span>Total</span><span>${aiFmt(tot)}</span></div></div>
+      ${(d.tcPayment||d.tcDelivery)?`<div class="pdf-notes"><strong>Términos y Condiciones</strong>${d.tcPayment?`<div><span style="font-weight:600;color:#1a5fa8">Pago:</span> ${d.tcPayment}</div>`:''}${d.tcDelivery?`<div><span style="font-weight:600;color:#1a5fa8">Entrega:</span> ${d.tcDelivery}</div>`:''}</div>`:''}
+    </div>
+    <div class="pdf-footer"><span>Terminados Romero — Vidrio y Aluminio</span><span class="vbadge">${d.quoteNumber}</span></div>`;
+  document.querySelector('.ai-wrap').style.display='none';
+  document.getElementById('ai-pdf-wrap').classList.add('vis');
+  // auto-save to Sheets
+  try{api({accion:'saveDocumento',doc:{tipo:'Cotización',numero:d.quoteNumber,cliente:d.clientName,fecha:new Date().toISOString().split('T')[0],moneda:'MXN',subtotal:sub,descuento:da,iva:ta,total:tot,observaciones:d.tcExtras||'',productos:d.products}}).then(r=>{if(r.ok)toast('Cotización guardada en Sheets ✓');});}catch(e){}
+}
+
+function aiDownloadPDF(){
+  const qn=aiQuoteData?.quoteNumber||'COT';
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  const el=document.getElementById('ai-pdf');
+  if(isIOS){
+    const styles=`<style>@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Barlow',sans-serif;background:white}${Array.from(document.styleSheets).flatMap(s=>{try{return Array.from(s.cssRules).map(r=>r.cssText);}catch(e){return[];}}).filter(r=>r.includes('.pdf-')).join('\n')}</style>`;
+    window.open(URL.createObjectURL(new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Terminados Romero - ${qn}</title>${styles}</head><body>${el.outerHTML}</body></html>`],{type:'text/html'})),'_blank');
+  }else{
+    html2pdf().set({margin:0,filename:`Terminados Romero - ${qn}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(el).save();
+  }
+}
+
+function aiBackToChat(){
+  document.querySelector('.ai-wrap').style.display='flex';
+  document.getElementById('ai-pdf-wrap').classList.remove('vis');
+  aiAddBot('¿Necesitas hacer algún cambio? Dime qué ajustar. 😊');
+  aiSetQR(['✅ Todo bien, solo descargar','✏️ Cambiar un producto','✏️ Cambiar condiciones de pago']);
+}
+
+function aiNewQuote(){
+  aiHistory=[];aiQuoteData=null;
+  document.getElementById('ai-msgs').innerHTML='';
+  document.getElementById('ai-qr').innerHTML='';
+  document.querySelector('.ai-wrap').style.display='flex';
+  document.getElementById('ai-pdf-wrap').classList.remove('vis');
+  aiAddBot('¡Listo para una nueva cotización! 🪟<br><br>¿Para quién es esta vez?');
+}
 </script>
 </body>
 </html>
