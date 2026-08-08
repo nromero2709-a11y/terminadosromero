@@ -1122,25 +1122,31 @@ window.addEventListener('load',()=>{
 // ══ AGENTE IA ══════════════════════════════════════════════════════════════
 let aiHistory=[], aiQuoteData=null, aiLoading=false, aiInited=false;
 
-const AI_SYSTEM=`Eres el agente de cotizaciones de Terminados Romero, empresa especializada en vidrio y aluminio. Tu trabajo es recopilar la información necesaria para una cotización profesional, de forma conversacional y breve, como si fuera WhatsApp.
+const AI_COMPANY = { phone: '55-1491-6366', email: 'terminadosromero@hotmail.com', address: '' };
+
+const AI_SYSTEM=`Eres el agente de cotizaciones de Terminados Romero, empresa especializada en vidrio y aluminio. Quien te habla es el dueño o empleado de Terminados Romero, NO el cliente. Tu trabajo es recopilar la información necesaria para generar una cotización dirigida a un cliente, de forma conversacional y breve.
 
 FLUJO:
-1. Saluda brevemente y pide el nombre del cliente.
+1. Pregunta directamente el nombre del cliente al que va dirigida la cotización. NUNCA saludes con el nombre que te dan ni lo trates como si fuera el cliente. Correcto: "¿Cuál es el nombre del cliente?" Incorrecto: "¡Hola [nombre]!".
 2. Pregunta los productos/servicios (descripción, medidas, cantidad, precio unitario). Permite múltiples. Cuando diga que terminó, continúa.
 3. Pregunta condiciones de pago.
 4. Pregunta tiempo de entrega.
-5. Pregunta descuento (%) e IVA (default 16%).
-6. Pregunta teléfono y correo de Terminados Romero si no los tiene.
-7. Muestra resumen completo y pregunta si está correcto.
-8. Al confirmar, responde EXACTAMENTE así (sin texto antes ni después):
+5. Pregunta la fecha de validez de la cotización (ej. "¿Hasta qué fecha es válida?").
+6. Pregunta si hay garantía, notas de devolución u observaciones adicionales. Si no hay, continúa.
+7. Pregunta descuento (%) e IVA (default 16%).
+8. Muestra resumen completo y pregunta si está correcto.
+9. Al confirmar, responde EXACTAMENTE así (sin texto antes ni después):
 
-QUOTE_READY:{"clientName":"...","clientCompany":"...","clientEmail":"","clientPhone":"","clientAddress":"","products":[{"desc":"...","meds":"...","qty":1,"price":0}],"discount":0,"tax":16,"tcPayment":"...","tcDelivery":"...","tcExtras":"","companyPhone":"...","companyEmail":"...","companyAddress":"...","quoteNumber":"TR-XXX"}
+QUOTE_READY:{"clientName":"...","clientCompany":"...","clientEmail":"","clientPhone":"","clientAddress":"","products":[{"desc":"...","meds":"...","qty":1,"price":0}],"discount":0,"tax":16,"tcPayment":"...","tcDelivery":"...","tcExtras":"...","validUntil":"YYYY-MM-DD","quoteNumber":"TR-XXX"}
 
 REGLAS:
 - Mensajes cortos, usa emojis ocasionalmente 🪟✅
 - Extrae múltiples productos de un solo mensaje si el usuario los da juntos.
 - Genera quoteNumber como TR- seguido de 3 dígitos (ej. TR-382).
 - Precios siempre como números sin símbolos en el JSON.
+- tcExtras debe incluir cualquier nota de garantía, devolución u observación adicional.
+- validUntil en formato YYYY-MM-DD. Si el usuario dice "30 días", calcula la fecha a partir de hoy.
+- NUNCA preguntes por datos de contacto de Terminados Romero, ya están fijos en el sistema.
 - Solo emite QUOTE_READY cuando el usuario confirme explícitamente.`;
 
 function aiInit(){
@@ -1218,6 +1224,8 @@ async function aiSend(){
       else if(lo.includes('descuento'))aiSetQR(['Sin descuento','5%','10%','15%']);
       else if(lo.includes('pago')||lo.includes('anticipo'))aiSetQR(['50% anticipo, 50% contra entrega','Pago total al recibir','100% anticipo']);
       else if(lo.includes('entrega')||lo.includes('días'))aiSetQR(['5 a 7 días hábiles','3 a 5 días hábiles','10 días hábiles']);
+      else if(lo.includes('válida')||lo.includes('validez')||lo.includes('fecha'))aiSetQR(['15 días','30 días','Hasta fin de mes']);
+      else if(lo.includes('garantía')||lo.includes('adicional')||lo.includes('devolución'))aiSetQR(['Sin observaciones adicionales','Garantía 6 meses por defectos de fabricación','Sin devoluciones fuera de garantía']);
     }
   }catch(e){aiHideTyping();aiAddBot('❌ Error de conexión. Intenta de nuevo.');aiHistory.pop();}
   finally{aiLoading=false;document.getElementById('ai-send').disabled=false;document.getElementById('ai-input').focus();}
@@ -1231,17 +1239,18 @@ function aiRenderPDF(d){
   const disc=parseFloat(d.discount)||0,tax=parseFloat(d.tax)||16;
   const da=sub*disc/100,ta=(sub-da)*tax/100,tot=sub-da+ta;
   const today=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+  const validUntilStr=d.validUntil?(([y,m,dy])=>new Date(+y,+m-1,+dy).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}))(d.validUntil.split('-')):'';
   const rows=prods.map(p=>`<tr><td>${p.desc}</td><td style="text-align:center">${p.meds||'—'}</td><td style="text-align:center">${p.qty}</td><td style="text-align:center">${aiFmt(p.price)}</td><td style="text-align:right">${aiFmt(p.qty*p.price)}</td></tr>`).join('');
   document.getElementById('ai-pdf').innerHTML=`
-    <div class="pdf-header"><div class="pdf-logo-area">${LOGO}<div class="pdf-company-text"><h2>TERMINADOS ROMERO</h2><div class="tagline">Vidrio y Aluminio</div><div class="contact">${[d.companyPhone,d.companyEmail,d.companyAddress].filter(Boolean).join(' · ')}</div></div></div><div class="pdf-quote-badge"><div class="qlabel">Cotización</div><div class="qnum">${d.quoteNumber||'TR-001'}</div><div class="qdate">${today}</div></div></div>
+    <div class="pdf-header"><div class="pdf-logo-area">${LOGO}<div class="pdf-company-text"><h2>TERMINADOS ROMERO</h2><div class="tagline">Vidrio y Aluminio</div><div class="contact">${[AI_COMPANY.phone,AI_COMPANY.email].filter(Boolean).join(' · ')}</div></div></div><div class="pdf-quote-badge"><div class="qlabel">Cotización</div><div class="qnum">${d.quoteNumber||'TR-001'}</div><div class="qdate">${today}</div></div></div>
     <div class="pdf-stripe"></div>
     <div class="pdf-body">
-      <div class="pdf-meta"><div class="pdf-meta-block"><h4>Cliente</h4><p><strong>${d.clientName}</strong><br>${d.clientCompany?d.clientCompany+'<br>':''}${d.clientAddress?d.clientAddress+'<br>':''}${d.clientEmail?d.clientEmail+'<br>':''}${d.clientPhone||''}</p></div><div class="pdf-meta-block"><h4>Detalles</h4><p>${d.tcPayment?`<strong>Pago:</strong> ${d.tcPayment}<br>`:''}${d.tcDelivery?`<strong>Entrega:</strong> ${d.tcDelivery}`:''}</p></div></div>
+      <div class="pdf-meta"><div class="pdf-meta-block"><h4>Cliente</h4><p><strong>${d.clientName}</strong><br>${d.clientCompany?d.clientCompany+'<br>':''}${d.clientAddress?d.clientAddress+'<br>':''}${d.clientEmail?d.clientEmail+'<br>':''}${d.clientPhone||''}</p></div><div class="pdf-meta-block"><h4>Detalles</h4><p>${validUntilStr?`<strong>Válida hasta:</strong> ${validUntilStr}<br>`:''}${d.tcPayment?`<strong>Pago:</strong> ${d.tcPayment}<br>`:''}${d.tcDelivery?`<strong>Entrega:</strong> ${d.tcDelivery}`:''}</p></div></div>
       <table class="pdf-table"><thead><tr><th style="text-align:left">Descripción</th><th>Medidas</th><th>Cant.</th><th>P. Unitario</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="pdf-totals"><div class="pdf-totals-row"><span>Subtotal</span><span>${aiFmt(sub)}</span></div>${disc>0?`<div class="pdf-totals-row"><span>Descuento (${disc}%)</span><span>-${aiFmt(da)}</span></div>`:''}${tax>0?`<div class="pdf-totals-row"><span>IVA (${tax}%)</span><span>${aiFmt(ta)}</span></div>`:''}<div class="pdf-totals-row"><span>Total</span><span>${aiFmt(tot)}</span></div></div>
-      ${(d.tcPayment||d.tcDelivery)?`<div class="pdf-notes"><strong>Términos y Condiciones</strong>${d.tcPayment?`<div><span style="font-weight:600;color:#1a5fa8">Pago:</span> ${d.tcPayment}</div>`:''}${d.tcDelivery?`<div><span style="font-weight:600;color:#1a5fa8">Entrega:</span> ${d.tcDelivery}</div>`:''}</div>`:''}
+      ${(d.tcPayment||d.tcDelivery||d.tcExtras||validUntilStr)?`<div class="pdf-notes"><strong>Términos y Condiciones</strong>${d.tcPayment?`<div><span style="font-weight:600;color:#1a5fa8">Pago:</span> ${d.tcPayment}</div>`:''}${d.tcDelivery?`<div><span style="font-weight:600;color:#1a5fa8">Entrega:</span> ${d.tcDelivery}</div>`:''}${validUntilStr?`<div><span style="font-weight:600;color:#1a5fa8">Válida hasta:</span> ${validUntilStr}</div>`:''}${d.tcExtras?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #cddaeb">${d.tcExtras}</div>`:''}</div>`:''}
     </div>
-    <div class="pdf-footer"><span>Terminados Romero — Vidrio y Aluminio</span><span class="vbadge">${d.quoteNumber}</span></div>`;
+    <div class="pdf-footer"><span>Terminados Romero — Vidrio y Aluminio</span>${validUntilStr?`<span class="validity-badge">Válida hasta ${validUntilStr}</span>`:`<span class="vbadge">${d.quoteNumber}</span>`}</div>`;
   document.querySelector('.ai-wrap').style.display='none';
   document.getElementById('ai-pdf-wrap').classList.add('vis');
   // auto-save to Sheets
